@@ -1,0 +1,126 @@
+/* issuance.css */
+
+body {
+  font-family: Arial, sans-serif; /* Define a font stack */
+  background-color: #f9f9f9; /* Set a background color */
+}
+
+.issuer-container {
+  background: linear-gradient(135deg, #ff5722, #ff9800);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  max-width: 9000px;
+  margin: 0 auto;
+  margin-top: 40px; /* Add margin to separate from the top */
+}
+
+/* Navbar Styles */
+
+/* NavLinks.css */
+
+.nav-links {
+  background: #333;
+  padding: 10px;
+  text-align: right;
+}
+
+.nav-link {
+  color: #fff;
+  text-decoration: none;
+  margin-right: 10px;
+  display: inline-block;
+  transition: color 0.3s, background 0.3s;
+  padding: 5px 10px; /* Add padding for better touch targets on mobile */
+}
+
+.nav-link:hover {
+  color: #ff5722;
+  background: #222;
+}
+
+.nav-link.active {
+  color: #ff9800;
+  text-decoration: underline;
+}
+
+.nav-link.active:hover {
+  color: #2196f3;
+}
+
+@media screen and (max-width: 500px) {
+  .nav-links {
+    float: none;
+    display: block;
+    text-align: center; /* Center align for small screens */
+  }
+}
+
+h1 {
+  text-align: center;
+  margin: 20px 0; /* Add more spacing around the heading */
+  color: #333;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px; /* Increase margin for separation */
+  color: #666;
+}
+
+input[type="text"],
+input[type="number"] {
+  padding: 11px;
+  border-radius: 8px;
+  border: 2px solid #ff9800;
+  width: 92%;
+  margin-bottom: margin-bottom;
+  color: #333;
+}
+
+input:focus {
+  outline-color: #ff5722;
+}
+
+button {
+  background: #ff9800;
+  color: white;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  display: block;
+  margin: 0 auto;
+  transition: background 0.3s, color 0.3s; /* Add transition for color change */
+}
+
+button:hover {
+  background: #ff5722;
+  color: white; /* Change text color on hover */
+}
+
+/* Alignments */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.form-row > * {
+  flex: 1;
+  margin-right: 20px;
+  margin-bottom: 10px;
+}
+
+/* Responsiveness */
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-row > * {
+    margin-right: 0;
+  }
+}
