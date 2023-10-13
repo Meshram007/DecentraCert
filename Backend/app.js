@@ -12,28 +12,27 @@ const web3i = require("./web3i");
 const confirm = require("./confirm");
 const qr = require("qr-image");
 const QRCode = require("qrcode");
-const { fromPath } = require('pdf2pic');
-const { PNG } = require('pngjs');
-const jsQR = require('jsqr');
-
+const { fromPath } = require("pdf2pic");
+const { PNG } = require("pngjs");
+const jsQR = require("jsqr");
 
 var pdfBytes;
 
 function extractCertificateInfo(qrCodeText) {
-  const lines = qrCodeText.split('\n');
+  const lines = qrCodeText.split("\n");
   const certificateInfo = {
     "Certificate Hash": "",
-    "Certificate Number": ""
+    "Certificate Number": "",
   };
 
   for (const line of lines) {
-    const parts = line.trim().split(':');
+    const parts = line.trim().split(":");
     if (parts.length === 2) {
       const key = parts[0].trim();
       let value = parts[1].trim();
 
       // Remove commas from the value if present
-      value = value.replace(/,/g, '');
+      value = value.replace(/,/g, "");
 
       if (key === "Certificate Hash") {
         certificateInfo["Certificate Hash"] = value;
@@ -46,15 +45,13 @@ function extractCertificateInfo(qrCodeText) {
   return certificateInfo;
 }
 
-
 // Function to extract QR code from a PDF
 async function extractQRCodeDataFromPDF(pdfFilePath) {
   try {
-
     const pdf2picOptions = {
       quality: 100,
       density: 300,
-      format: 'png',
+      format: "png",
       width: 2000,
       height: 2000,
     };
@@ -69,21 +66,21 @@ async function extractQRCodeDataFromPDF(pdfFilePath) {
     const dataUri = base64Response?.base64;
 
     if (!dataUri)
-      throw new Error('PDF could not be converted to Base64 string');
+      throw new Error("PDF could not be converted to Base64 string");
 
-    const buffer = Buffer.from(dataUri, 'base64');
+    const buffer = Buffer.from(dataUri, "base64");
     const png = PNG.sync.read(buffer);
 
     const code = jsQR(Uint8ClampedArray.from(png.data), png.width, png.height);
     const qrCodeText = code?.data;
 
     if (!qrCodeText)
-      throw new Error('QR Code Text could not be extracted from PNG image');
+      throw new Error("QR Code Text could not be extracted from PNG image");
 
-    console.log('QR Code Text:==> ', qrCodeText);
+    console.log("QR Code Text:==> ", qrCodeText);
 
     const certificateInfo = extractCertificateInfo(qrCodeText);
-     
+
     return certificateInfo;
   } catch (error) {
     console.error(error);
@@ -193,15 +190,22 @@ app.post("/api/upload", upload.single("pdfFile"), async (req, res) => {
   //Blockchain processing.
   const contract = await web3i();
 
-  const tx = contract.methods.issueCertificate(
-    fields.Certificate_Number,
-    combinedHash
-  );
+  const val = await contract.methods.verifyCertificate(combinedHash).call();
 
-  hash = await confirm(tx);
+  if (val[0] == true && val[1] == Certificate_Number) {
+    res.status(400).json({ message: 'Certificate already issued' });
+  } else {
+    const tx = contract.methods.issueCertificate(
+      fields.Certificate_Number,
+      combinedHash
+    );
 
-  // qr code processing.
-  const qrCodeData = `Transaction Hash: "${hash}",
+    hash = await confirm(tx);
+
+    console.log("hashhashhash", hash);
+
+    // qr code processing.
+    const qrCodeData = `Transaction Hash: "${hash}",
 Certificate Hash: ${combinedHash},
 Certificate Number: ${fields.Certificate_Number},
 Name: ${fields.name},
@@ -209,43 +213,45 @@ Course Name: ${fields.courseName},
 Grant Date: ${fields.Grant_Date},
 Expiration Date: ${fields.Expiration_Date}`;
 
-  // Generate the QR code with the updated data
-  const qrCodeImage = await QRCode.toBuffer(qrCodeData, {
-    errorCorrectionLevel: "H",
-  });
+    // Generate the QR code with the updated data
+    const qrCodeImage = await QRCode.toBuffer(qrCodeData, {
+      errorCorrectionLevel: "H",
+    });
 
-  file = req.file.path;
-  const outputPdf = `${fields.Certificate_Number}${name}.pdf`;
-  const linkUrl = `https://mumbai.polygonscan.com/tx/${hash}`;
+    file = req.file.path;
+    const outputPdf = `${fields.Certificate_Number}${name}.pdf`;
+    const linkUrl = `https://mumbai.polygonscan.com/tx/${hash}`;
 
-  const opdf = await addLinkToPdf(
-    __dirname + "/" + file,
-    outputPdf,
-    linkUrl,
-    qrCodeImage,
-    combinedHash
-  );
+    const opdf = await addLinkToPdf(
+      __dirname + "/" + file,
+      outputPdf,
+      linkUrl,
+      qrCodeImage,
+      combinedHash
+    );
 
-  const fileBuffer = fs.readFileSync(outputPdf);
-
-  res.set({
-    "Content-Type": "application/pdf",
-    "Content-Disposition": 'attachment; filename="certificate.pdf"',
-  });
-
-  res.send(fileBuffer);
+    const fileBuffer = fs.readFileSync(outputPdf);
+    console.log("fileBuffer", fileBuffer);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": 'attachment; filename="certificate.pdf"',
+    });
+    res.send(fileBuffer);
+  }
 });
 
 //Verify page
 app.post("/api/verify", upload.single("pdfFile"), async (req, res) => {
   file = req.file.path;
   const certificateData = await extractQRCodeDataFromPDF(file);
-  console.log('Certificate Hash:', certificateData["Certificate Hash"]);
-  console.log('Certificate Number:', certificateData["Certificate Number"]);
+  console.log("Certificate Hash:", certificateData["Certificate Hash"]);
+  console.log("Certificate Number:", certificateData["Certificate Number"]);
 
-  const contract = await web3i();// Convert to string
+  const contract = await web3i(); // Convert to string
   const certificateNumber = Number(certificateData["Certificate Number"]); // Convert to number
-  const val = await contract.methods.verifyCertificate(certificateData["Certificate Hash"]).call();
+  const val = await contract.methods
+    .verifyCertificate(certificateData["Certificate Hash"])
+    .call();
   console.log(val[0], val[1]);
 
   if (val[0] == true && val[1] == certificateNumber) {
