@@ -84,6 +84,7 @@ async function extractQRCodeDataFromPDF(pdfFilePath) {
     return certificateInfo;
   } catch (error) {
     console.error(error);
+    throw error; 
   }
 }
 
@@ -237,29 +238,36 @@ Expiration Date: ${fields.Expiration_Date}`;
       "Content-Disposition": 'attachment; filename="certificate.pdf"',
     });
     res.send(fileBuffer);
+
   }
 });
 
 //Verify page
 app.post("/api/verify", upload.single("pdfFile"), async (req, res) => {
   file = req.file.path;
-  const certificateData = await extractQRCodeDataFromPDF(file);
-  console.log("Certificate Hash:", certificateData["Certificate Hash"]);
-  console.log("Certificate Number:", certificateData["Certificate Number"]);
+  try {
+    const certificateData = await extractQRCodeDataFromPDF(file);
+    console.log("Certificate Hash:", certificateData["Certificate Hash"]);
+    console.log("Certificate Number:", certificateData["Certificate Number"]);
 
-  const contract = await web3i(); // Convert to string
-  const certificateNumber = Number(certificateData["Certificate Number"]); // Convert to number
-  const val = await contract.methods
-    .verifyCertificate(certificateData["Certificate Hash"])
-    .call();
-  console.log(val[0], val[1]);
+    const contract = await web3i();
+    const certificateNumber = Number(certificateData["Certificate Number"]);
+    const val = await contract.methods
+      .verifyCertificate(certificateData["Certificate Hash"])
+      .call();
+    console.log(val[0], val[1]);
 
-  if (val[0] == true && val[1] == certificateNumber) {
-    res.status(200).json({ message: "Verified: Certificate is valid" });
-  } else {
+    if (val[0] == true && val[1] == certificateNumber) {
+      res.status(200).json({ message: "Verified: Certificate is valid" });
+    } else {
+      res.status(400).json({ message: "Certificate is not valid" });
+    }
+  } catch (error) {
+    // Handle the error and send the response to the frontend
     res.status(400).json({ message: "Certificate is not valid" });
   }
 });
+
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

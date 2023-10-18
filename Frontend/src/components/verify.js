@@ -1,54 +1,71 @@
-import React, { useState } from "react";
-import "./isuance.css";
-import { Link } from "react-router-dom";
+import React, { useState } from 'react';
+import './isuance.css';
+import { Link } from 'react-router-dom';
+import Loader from './loader';
+import Notification from './notification';
 
 function VerifyForm() {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
 
     if (file) {
       setSelectedFile(file);
-      setErrorMessage("");
+      setErrorMessage('');
     } else {
       setSelectedFile(null);
-      setErrorMessage("Please select a valid PDF file.");
+      setErrorMessage('Please select a valid PDF file.');
     }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setIsLoading(true);
 
     if (!selectedFile) {
-      setErrorMessage("Please select a valid PDF file before submitting.");
+      setErrorMessage('Please select a valid PDF file before submitting.');
+      showNotification('Certificate is not valid');
+      setIsLoading(false);
       return;
     }
 
     const formData = new FormData();
-    formData.append("pdfFile", selectedFile);
+    formData.append('pdfFile', selectedFile);
 
     try {
-      const response = await fetch("http://localhost:8000/api/verify", {
-        method: "POST",
+      const response = await fetch('http://localhost:8000/api/verify', {
+        method: 'POST',
         body: formData,
       });
 
       if (response.ok) {
-        const data = await response.json();
-        alert(data.message); // Display the server's message in a popup
-        console.log("Certificate is valid");
+        showNotification('Certificate is valid');
+        console.log('Certificate is valid');
       } else {
-        // Handle error response
         const errorData = await response.json();
-        alert(errorData.message); // Display the server's error message in a popup
-        console.error("Error uploading file:", response.statusText);
+        showNotification(errorData.message);
+        console.error('Error uploading file:', response.statusText);
       }
     } catch (error) {
-      // Handle fetch error
-      console.error("Error uploading file:", error.message);
+      showNotification('Error uploading file: ' + error.message);
+      console.error('Error uploading file:', error.message);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const showNotification = (message) => {
+    setNotificationMessage(message);
+    setIsNotificationVisible(true);
+  };
+
+  const handleCloseNotification = () => {
+    setIsNotificationVisible(false);
   };
 
   return (
@@ -74,9 +91,14 @@ function VerifyForm() {
           <br />
           {errorMessage && <div className="error-message">{errorMessage}</div>}
           <br />
-          <button type="submit">Submit</button>
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? <Loader /> : 'Submit'}
+          </button>
         </form>
       </div>
+      {isNotificationVisible && (
+        <Notification message={notificationMessage} onClose={handleCloseNotification} />
+      )}
     </>
   );
 }
