@@ -10,7 +10,6 @@ const fs = require("fs");
 const calculateHash = require("./calculateHash");
 const web3i = require("./web3i");
 const confirm = require("./confirm");
-const qr = require("qr-image");
 const QRCode = require("qrcode");
 const { fromPath } = require("pdf2pic");
 const { PNG } = require("pngjs");
@@ -31,7 +30,6 @@ function extractCertificateInfo(qrCodeText) {
       const key = parts[0].trim();
       let value = parts[1].trim();
 
-      // Remove commas from the value if present
       value = value.replace(/,/g, "");
 
       if (key === "Certificate Hash") {
@@ -84,7 +82,7 @@ async function extractQRCodeDataFromPDF(pdfFilePath) {
     return certificateInfo;
   } catch (error) {
     console.error(error);
-    throw error; 
+    throw error;
   }
 }
 
@@ -112,8 +110,6 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({ storage, fileFilter });
-
-var qrX, qrY, qrWidth, qrHeight;
 
 async function addLinkToPdf(
   inputPath,
@@ -165,6 +161,8 @@ async function addLinkToPdf(
   return pdfBytes;
 }
 
+let linkUrl;
+
 // POST route to handle file upload and form data processing
 app.post("/api/upload", upload.single("pdfFile"), async (req, res) => {
   const Certificate_Number = req.body.Certificate_Number;
@@ -186,15 +184,13 @@ app.post("/api/upload", upload.single("pdfFile"), async (req, res) => {
   }
   const combinedHash = calculateHash(JSON.stringify(hashedFields));
 
-  console.log("combinedHash", combinedHash);
-
   //Blockchain processing.
   const contract = await web3i();
 
   const val = await contract.methods.verifyCertificate(combinedHash).call();
 
   if (val[0] == true && val[1] == Certificate_Number) {
-    res.status(400).json({ message: 'Certificate already issued' });
+    res.status(400).json({ message: "Certificate already issued" });
   } else {
     const tx = contract.methods.issueCertificate(
       fields.Certificate_Number,
@@ -203,9 +199,6 @@ app.post("/api/upload", upload.single("pdfFile"), async (req, res) => {
 
     hash = await confirm(tx);
 
-    console.log("hashhashhash", hash);
-
-    // qr code processing.
     const qrCodeData = `Transaction Hash: "${hash}",
 Certificate Hash: ${combinedHash},
 Certificate Number: ${fields.Certificate_Number},
@@ -214,14 +207,13 @@ Course Name: ${fields.courseName},
 Grant Date: ${fields.Grant_Date},
 Expiration Date: ${fields.Expiration_Date}`;
 
-    // Generate the QR code with the updated data
     const qrCodeImage = await QRCode.toBuffer(qrCodeData, {
       errorCorrectionLevel: "H",
     });
 
     file = req.file.path;
     const outputPdf = `${fields.Certificate_Number}${name}.pdf`;
-    const linkUrl = `https://mumbai.polygonscan.com/tx/${hash}`;
+    linkUrl = `https://mumbai.polygonscan.com/tx/${hash}`;
 
     const opdf = await addLinkToPdf(
       __dirname + "/" + file,
@@ -232,14 +224,18 @@ Expiration Date: ${fields.Expiration_Date}`;
     );
 
     const fileBuffer = fs.readFileSync(outputPdf);
-    console.log("fileBuffer", fileBuffer);
+
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": 'attachment; filename="certificate.pdf"',
     });
     res.send(fileBuffer);
-
   }
+});
+
+// Define a route that takes a hash parameter
+app.get("/polygonlink", (req, res) => {
+  res.json({ linkUrl });
 });
 
 //Verify page
@@ -255,7 +251,6 @@ app.post("/api/verify", upload.single("pdfFile"), async (req, res) => {
     const val = await contract.methods
       .verifyCertificate(certificateData["Certificate Hash"])
       .call();
-    console.log(val[0], val[1]);
 
     if (val[0] == true && val[1] == certificateNumber) {
       res.status(200).json({ message: "Verified: Certificate is valid" });
@@ -263,11 +258,9 @@ app.post("/api/verify", upload.single("pdfFile"), async (req, res) => {
       res.status(400).json({ message: "Certificate is not valid" });
     }
   } catch (error) {
-    // Handle the error and send the response to the frontend
     res.status(400).json({ message: "Certificate is not valid" });
   }
 });
-
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

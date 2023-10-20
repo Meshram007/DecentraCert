@@ -5,11 +5,17 @@ import { saveAs } from "file-saver";
 import Loader from "./loader";
 import Notification from "./notification";
 
+import ModernPopup from "./ModernPopup1";
+
 function CertificateForm() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [responseMessage, setResponseMessage] = useState("");
   const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalChoice, setModalChoice] = useState(null);
+  const [certificateResponse, setCertificateResponse] = useState(null);
+  const [linkUrl, setLinkUrl] = useState("");
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
@@ -34,39 +40,43 @@ function CertificateForm() {
     formData.append("Grant_Date", event.target.Grant_Date.value);
     formData.append("Expiration_Date", event.target.Expiration_Date.value);
 
-    console.log(event.target.Expiration_Date.value);
     try {
       const response = await fetch("http://localhost:8000/api/upload", {
         method: "POST",
         body: formData,
       });
-      console.log(response.status, response.headers);
+
+      const response1 = await fetch("http://localhost:8000/polygonlink", {
+        method: "GET",
+      });
 
       if (response.ok) {
-        console.log("File uploaded successfully!");
-        saveCertificate(response); // You can still use the original response here
+        setCertificateResponse(response);
+        setModalChoice("Download Certificate");
+
+        const data = await response1.json();
+        const linkUrl = data.linkUrl;
+        setLinkUrl(linkUrl);
+        setModalChoice("View On Blockchain");
+        setIsModalOpen(true);
       } else if (response.status === 400) {
-        console.log("Certificate Already Issued");
-        existCertificate(response); // You can still use the original response here
+        existCertificate(response);
       } else {
-        // Handle error response
         console.error("Error uploading file:", response.statusText);
       }
     } catch (error) {
-      // Handle fetch error
       console.error("Error uploading file:", error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const saveCertificate = async (response) => {
+  const saveCertificate = async () => {
     try {
-      const pdfBlob = await response.blob();
+      const pdfBlob = await certificateResponse.blob();
       saveAs(pdfBlob, "certificate.pdf");
 
-      const message = `Certificate Downloaded Successfully!`;
-
+      const message = "Certificate Downloaded Successfully!";
       setResponseMessage(message);
       setIsNotificationVisible(true);
     } catch (error) {
@@ -77,11 +87,22 @@ function CertificateForm() {
   const existCertificate = async (response) => {
     try {
       const message = "Certificate already issued";
-
       setResponseMessage(message);
       setIsNotificationVisible(true);
     } catch (error) {
       console.error("Error processing response:", error.message);
+    }
+  };
+
+  const handleModalChoice = (choice) => {
+    setModalChoice(choice);
+
+    if (choice === "Download Certificate") {
+      saveCertificate();
+    } else if (choice === "View On Blockchain") {
+      if (linkUrl) {
+        window.open(linkUrl, "_blank");
+      }
     }
   };
 
@@ -156,8 +177,7 @@ function CertificateForm() {
           <br />
           <br />
           <button type="submit" disabled={isLoading}>
-            {isLoading ? <Loader /> : "Submit"}{" "}
-            {/* Display loader when isLoading is true */}
+            {isLoading ? <Loader /> : "Submit"}
           </button>
         </form>
       </div>
@@ -167,6 +187,13 @@ function CertificateForm() {
           onClose={handleCloseNotification}
         />
       )}
+
+      {/* ModernPopup */}
+      <ModernPopup
+        isOpen={isModalOpen}
+        closeModal={() => setIsModalOpen(false)}
+        handleModalChoice={handleModalChoice}
+      />
     </>
   );
 }

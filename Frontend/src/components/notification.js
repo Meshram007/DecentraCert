@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import './notification.css'; 
+import React, { useState, useEffect } from "react";
+import "./notification.css";
 
 const Notification = ({ message, onClose, type }) => {
   const [isVisible, setIsVisible] = useState(true);
@@ -8,7 +8,7 @@ const Notification = ({ message, onClose, type }) => {
     if (isVisible) {
       const timer = setTimeout(() => {
         onClose();
-      }, 10000); // Automatically close the notification after 5 seconds
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [isVisible, onClose]);

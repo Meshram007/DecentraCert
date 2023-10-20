@@ -1,16 +1,16 @@
-import React from 'react';
-import {  BrowserRouter as Router, Routes , Route } from 'react-router-dom';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
-import CertificateForm from './components/isuance.js'; // Import the CertificateForm component
-import VerifyForm from './components/verify.js';
+import CertificateForm from "./components/isuance.js";
+import VerifyForm from "./components/verify.js";
 function App() {
   return (
     <div className="App">
       <Router>
-          <Routes>
-            <Route path="/" element={<CertificateForm />}/>
-            <Route path="/verify" element={<VerifyForm/>}/>
-          </Routes>
+        <Routes>
+          <Route path="/" element={<CertificateForm />} />
+          <Route path="/verify" element={<VerifyForm />} />
+        </Routes>
       </Router>
     </div>
   );

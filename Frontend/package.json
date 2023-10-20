@@ -13,7 +13,9 @@
     "file-saver": "^2.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.14.2"
+    "react-modal": "^3.16.1",
+    "react-router-dom": "^6.14.2",
+    "reactjs-popup": "^2.0.6"
   },
   "devDependencies": {
     "babel-eslint": "^10.1.0",
