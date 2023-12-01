@@ -1,5 +1,8 @@
 const express = require("express");
 const multer = require("multer");
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+const bodyParser = require('body-parser');
 const path = require("path");
 const cors = require("cors");
 const app = express();
@@ -14,8 +17,48 @@ const QRCode = require("qrcode");
 const { fromPath } = require("pdf2pic");
 const { PNG } = require("pngjs");
 const jsQR = require("jsqr");
+const { MongoClient } = require("mongodb");
+
+const adminController = require('./login/controller');
 
 var pdfBytes;
+
+const mongoURL = "mongodb+srv://nikhilmeshram:WFFEg9tgrPT10KkL@cluster0.q8p1e2j.mongodb.net/"; // Change this URL to your MongoDB server
+
+const client = new MongoClient(mongoURL, { useUnifiedTopology: true });
+
+// Swagger setup
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Admin API',
+      version: '1.0.0',
+      description: 'API documentation for Admin module',
+    },
+  },
+  apis: ['app.js'], // Add other paths if needed
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+async function insertCertificateData(data) {
+  try {
+    await client.connect();
+    const database = client.db("netcom_database"); 
+    const collection = database.collection("certificates"); 
+
+    const result = await collection.insertOne(data);
+
+    if (result.acknowledged === true) {
+      console.log("Certificate data inserted:", result.insertedId);
+    } else {
+      console.error("Failed to insert certificate data");
+    }
+  } catch (error) {
+    console.error("Error inserting certificate data:", error);
+  }
+}
 
 function extractCertificateInfo(qrCodeText) {
   const lines = qrCodeText.split("\n");
@@ -87,6 +130,8 @@ async function extractQRCodeDataFromPDF(pdfFilePath) {
 }
 
 app.use(cors());
+app.use(bodyParser.json());
+
 // Set up multer storage and file filter
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -163,6 +208,23 @@ async function addLinkToPdf(
 
 let linkUrl;
 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     description: Redirect to Swagger UI
+ *     responses:
+ *       302:
+ *         description: Redirect to Swagger UI
+ */
+app.get('/health', (req, res) => {
+  res.status(200).send('Server is healthy');
+});
+
+adminController.login(req, res, next);
+
 // POST route to handle file upload and form data processing
 app.post("/api/upload", upload.single("pdfFile"), async (req, res) => {
   const Certificate_Number = req.body.Certificate_Number;
@@ -213,7 +275,7 @@ Expiration Date: ${fields.Expiration_Date}`;
 
     file = req.file.path;
     const outputPdf = `${fields.Certificate_Number}${name}.pdf`;
-    linkUrl = `https://mumbai.polygonscan.com/tx/${hash}`;
+    linkUrl = `https://polygonscan.com/tx/${hash}`;
 
     const opdf = await addLinkToPdf(
       __dirname + "/" + file,
@@ -224,6 +286,18 @@ Expiration Date: ${fields.Expiration_Date}`;
     );
 
     const fileBuffer = fs.readFileSync(outputPdf);
+
+    const certificateData = {
+      Transaction_Hash: hash,
+      Certificate_Hash: combinedHash,
+      Certificate_Number: fields.Certificate_Number,
+      Name: fields.name,
+      Course_Name: fields.courseName,
+      Grant_Date: fields.Grant_Date,
+      Expiration_Date: fields.Expiration_Date,
+    };
+
+    insertCertificateData(certificateData);
 
     res.set({
       "Content-Type": "application/pdf",
